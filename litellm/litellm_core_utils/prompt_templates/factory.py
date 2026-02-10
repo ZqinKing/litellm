@@ -1317,12 +1317,6 @@ def _get_thought_signature_from_tool(
             _, signature = parts
             return signature
     # If no signature found and model is gemini-3, return dummy signature
-    from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
-        VertexGeminiConfig,
-    )
-
-    if model and VertexGeminiConfig._is_gemini_3_or_newer(model):
-        return _get_dummy_thought_signature()
     return None
 
 
@@ -1430,18 +1424,6 @@ def convert_to_gemini_tool_call_invoke(
                 )
                 if isinstance(provider_fields, dict):
                     thought_signature = provider_fields.get("thought_signature")
-
-                # If no signature found and model is gemini-3, use dummy signature
-                from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
-                    VertexGeminiConfig,
-                )
-
-                if (
-                    not thought_signature
-                    and model
-                    and VertexGeminiConfig._is_gemini_3_or_newer(model)
-                ):
-                    thought_signature = _get_dummy_thought_signature()
 
                 if thought_signature:
                     part_dict_function["thoughtSignature"] = thought_signature
