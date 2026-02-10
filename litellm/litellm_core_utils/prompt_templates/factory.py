@@ -2012,6 +2012,67 @@ def anthropic_process_openai_file_message(
     raise Exception(
         f"Either file_data or file_id must be present in the file message: {message}"
     )
+ 
+ 
+def ensure_tool_use_tool_result_pairing(
+    messages: List[AllMessageValues],
+) -> List[AllMessageValues]:
+    """
+    Ensure every assistant tool_call is followed by a tool result message.
+
+    OpenAI allows flexible ordering, but Anthropic requires tool_use -> tool_result
+    pairing in the next message.
+    """
+    if not messages:
+        return messages
+
+    normalized_messages: List[AllMessageValues] = []
+    for msg in messages:
+        normalized_messages.append(dict(msg) if hasattr(msg, "dict") else msg)  # type: ignore
+
+    tool_result_map: Dict[str, int] = {}
+    for idx, msg in enumerate(normalized_messages):
+        if msg.get("role") in {"tool", "function"}:
+            tool_call_id = msg.get("tool_call_id")
+            if tool_call_id:
+                tool_result_map[tool_call_id] = idx
+
+    result_messages: List[AllMessageValues] = []
+    used_tool_result_indices: Set[int] = set()
+
+    i = 0
+    while i < len(normalized_messages):
+        if i in used_tool_result_indices:
+            i += 1
+            continue
+
+        msg = normalized_messages[i]
+        result_messages.append(msg)
+
+        if msg.get("role") == "assistant" and msg.get("tool_calls"):
+            tool_calls = msg.get("tool_calls") or []
+            tool_call_ids = [tc.get("id") for tc in tool_calls if tc.get("id")]
+
+            for tool_call_id in tool_call_ids:
+                tool_result_idx = tool_result_map.get(tool_call_id)
+                if (
+                    tool_result_idx is not None
+                    and tool_result_idx > i
+                    and tool_result_idx not in used_tool_result_indices
+                ):
+                    result_messages.append(normalized_messages[tool_result_idx])
+                    used_tool_result_indices.add(tool_result_idx)
+                else:
+                    placeholder_result: AllMessageValues = {
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "content": "Tool execution was interrupted or result was not provided.",
+                    }
+                    result_messages.append(placeholder_result)
+
+        i += 1
+
+    return result_messages
 
 
 def anthropic_messages_pt(  # noqa: PLR0915
@@ -2033,6 +2094,7 @@ def anthropic_messages_pt(  # noqa: PLR0915
     5. System messages are a separate param to the Messages API
     6. Ensure we only accept role, content. (message.name is not supported)
     """
+    messages = ensure_tool_use_tool_result_pairing(messages)
     # add role=tool support to allow function call result/error submission
     user_message_types = {"user", "tool", "function"}
     # reformat messages to ensure user/assistant are alternating, if there's either 2 consecutive 'user' messages or 2 consecutive 'assistant' message, merge them.

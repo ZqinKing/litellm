@@ -364,6 +364,82 @@ def test_anthropic_messages_tool_call():
     )
 
 
+def test_should_reorder_anthropic_tool_results():
+    messages = [
+        {"role": "user", "content": "Hello"},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_abc",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": "{}"},
+                }
+            ],
+        },
+        {"role": "user", "content": "Another message"},
+        {"role": "tool", "tool_call_id": "call_abc", "content": "result"},
+    ]
+
+    translated_messages = anthropic_messages_pt(
+        messages, model="claude-3-sonnet-20240229", llm_provider="anthropic"
+    )
+
+    assert translated_messages[1]["role"] == "assistant"
+    # The tool result should be merged into the next user message or become its own user message
+    # In anthropic_messages_pt, consecutive user/tool messages are merged.
+    assert translated_messages[2]["role"] == "user"
+    
+    content_types = [block.get("type") for block in translated_messages[2]["content"]]
+    assert "tool_result" in content_types
+    assert "text" in content_types
+    
+    tool_result_block = next(
+        block
+        for block in translated_messages[2]["content"]
+        if block.get("type") == "tool_result"
+    )
+    assert tool_result_block["tool_use_id"] == "call_abc"
+
+
+def test_should_add_placeholder_for_missing_tool_results():
+    messages = [
+        {"role": "user", "content": "Hello"},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_missing",
+                    "type": "function",
+                    "function": {"name": "get_weather", "arguments": "{}"},
+                }
+            ],
+        },
+        {"role": "user", "content": "Another message"},
+    ]
+
+    translated_messages = anthropic_messages_pt(
+        messages, model="claude-3-sonnet-20240229", llm_provider="anthropic"
+    )
+
+    # assistant message followed by user message containing the placeholder tool_result
+    assert translated_messages[1]["role"] == "assistant"
+    assert translated_messages[2]["role"] == "user"
+    
+    content_types = [block.get("type") for block in translated_messages[2]["content"]]
+    assert "tool_result" in content_types
+    
+    tool_result_block = next(
+        block
+        for block in translated_messages[2]["content"]
+        if block.get("type") == "tool_result"
+    )
+    assert tool_result_block["tool_use_id"] == "call_missing"
+    assert "interrupted" in tool_result_block["content"]
+
+
 def test_anthropic_cache_controls_pt():
     "see anthropic docs for this: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching#continuing-a-multi-turn-conversation"
     messages = [
