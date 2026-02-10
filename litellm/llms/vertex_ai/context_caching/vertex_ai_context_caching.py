@@ -265,6 +265,9 @@ class ContextCachingEndpoints(VertexBase):
         if cached_content is not None:
             return messages, optional_params, cached_content
 
+        if api_base is not None and custom_llm_provider == "gemini":
+            return messages, optional_params, None
+
         cached_messages, non_cached_messages = separate_cached_messages(
             messages=messages
         )
@@ -396,6 +399,9 @@ class ContextCachingEndpoints(VertexBase):
         """
         if cached_content is not None:
             return messages, optional_params, cached_content
+
+        if api_base is not None and custom_llm_provider == "gemini":
+            return messages, optional_params, None
 
         cached_messages, non_cached_messages = separate_cached_messages(
             messages=messages

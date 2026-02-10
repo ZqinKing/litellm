@@ -215,6 +215,16 @@
     "litellm_provider": "anthropic",
     "credential_fields": [
       {
+        "key": "api_base",
+        "label": "API Base",
+        "placeholder": "https://api.anthropic.com",
+        "tooltip": "Optional: Custom API base URL for Anthropic",
+        "required": false,
+        "field_type": "text",
+        "options": null,
+        "default_value": null
+      },
+      {
         "key": "api_key",
         "label": "API Key",
         "placeholder": "sk-",
@@ -1203,6 +1213,16 @@
     "provider_display_name": "Google AI Studio",
     "litellm_provider": "gemini",
     "credential_fields": [
+      {
+        "key": "api_base",
+        "label": "API Base",
+        "placeholder": "https://generativelanguage.googleapis.com",
+        "tooltip": "Optional: Custom API base URL for Google AI Studio",
+        "required": false,
+        "field_type": "text",
+        "options": null,
+        "default_value": null
+      },
       {
         "key": "api_key",
         "label": "API Key",
