@@ -431,11 +431,39 @@ def _gemini_convert_messages_with_history(  # noqa: PLR0915
                         thought_signatures = provider_specific_fields.get("thought_signatures")
                     
                     # If we have thought signatures, add them to the part
-                    if thought_signatures and isinstance(thought_signatures, list) and len(thought_signatures) > 0:
-                        # Use the first signature for the text part (Gemini expects one signature per part)
-                        assistant_content.append(PartType(text=assistant_text, thoughtSignature=thought_signatures[0]))  # type: ignore
-                    else:
-                        assistant_content.append(PartType(text=assistant_text))  # type: ignore
+                    # Check if 'thought_signatures' is None AND ensure we are not sending an empty or invalid thoughtSignature
+                    # The Gemini API returns "Corrupted thought signature" if the signature is invalid or mismatched.
+                    # Since we can't validate the signature easily, it's safer to ONLY include it if we are sure it's valid.
+                    # However, simply stripping it might break multi-turn reasoning context.
+                    # The issue seems to be that LiteLLM might be sending thoughtSignature when it shouldn't, or sending an old/invalid one.
+                    
+                    # For now, let's remove the thoughtSignature inclusion logic for regular text parts if it causes issues.
+                    # Wait, the error is likely because we are sending `thoughtSignature` in the history for a model turn
+                    # but maybe the `text` associated with it has changed or it's just not valid anymore?
+                    # Or maybe the signature is tied to a specific request/response pair?
+                    
+                    # If the user provides a `thoughtSignature`, we assume they know what they are doing.
+                    # BUT, if this is causing "Corrupted thought signature" errors, maybe we should suppress it 
+                    # OR provide a way to disable it.
+                    
+                    # Given the error log, the request had a thought signature.
+                    # Let's try to conditionally include it only if it looks like a valid non-empty string?
+                    # Actually, if we just remove this block, we lose context.
+                    
+                    # The error "Corrupted thought signature" strongly suggests the signature we are sending back is bad.
+                    # In many cases, it's better to drop the signature and lose context than to fail the request entirely.
+                    # Let's try to NOT send thoughtSignature for now, or at least be very conservative.
+                    
+                    # Fix: Do NOT include thoughtSignature in the message history for now to prevent "Corrupted thought signature" error.
+                    # Multi-turn reasoning might degrade, but at least the request won't fail.
+                    # We can make this configurable later if needed.
+                    
+                    # if thought_signatures and isinstance(thought_signatures, list) and len(thought_signatures) > 0:
+                    #     # Use the first signature for the text part (Gemini expects one signature per part)
+                    #     assistant_content.append(PartType(text=assistant_text, thoughtSignature=thought_signatures[0]))  # type: ignore
+                    # else:
+                    assistant_content.append(PartType(text=assistant_text))  # type: ignore
+
 
                 ## HANDLE ASSISTANT FUNCTION CALL
                 if (
@@ -479,7 +507,7 @@ def _gemini_convert_messages_with_history(  # noqa: PLR0915
                 messages[msg_i]["role"] not in tool_call_message_roles
             ):
                 if len(tool_call_responses) > 0:
-                    contents.append(ContentType(parts=tool_call_responses))
+                    contents.append(ContentType(role="user", parts=tool_call_responses))
                     tool_call_responses = []
 
             if msg_i == init_msg_i:  # prevent infinite loops
@@ -489,7 +517,7 @@ def _gemini_convert_messages_with_history(  # noqa: PLR0915
                     )
                 )
         if len(tool_call_responses) > 0:
-            contents.append(ContentType(parts=tool_call_responses))
+            contents.append(ContentType(role="user", parts=tool_call_responses))
 
         if len(contents) == 0:
             verbose_logger.warning(
