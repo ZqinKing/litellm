@@ -132,6 +132,10 @@ class AzureOpenAIResponsesAPIConfig(OpenAIResponsesAPIConfig):
                     new_tools.append(tool)
             response_api_optional_request_params["tools"] = new_tools
 
+        # Filter out 'metadata' parameter - CLIProxyAPI doesn't support it
+        # Issue: CLIProxyAPI returns "Unsupported parameter: metadata" error
+        response_api_optional_request_params.pop("metadata", None)
+
         return super().transform_responses_api_request(
             model=stripped_model_name,
             input=input,
