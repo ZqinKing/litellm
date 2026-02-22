@@ -72,7 +72,7 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
 
         # Filter out 'metadata' parameter for gpt-5.2-codex
         # Issue: CLIProxyAPI returns "Unsupported parameter: metadata" error
-        if model == "gpt-5.2-codex":
+        if model in ["gpt-5.2-codex", "gpt-5.3-codex"]:
             response_api_optional_request_params.pop("metadata", None)
 
         input = self._validate_input_param(input)
