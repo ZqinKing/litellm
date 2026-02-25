@@ -76,6 +76,8 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
                 model=model, input=input, **response_api_optional_request_params
             )
         )
+        if model in ["gpt-5.2-codex", "gpt-5.3-codex"]:
+            final_request_params.pop("metadata", None)
 
         return final_request_params
 
