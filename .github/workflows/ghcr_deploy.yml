@@ -301,7 +301,7 @@ jobs:
 
   build-and-push-helm-chart:
     if: github.event.inputs.release_type  != 'dev'
-    needs: [docker-hub-deploy, build-and-push-image, build-and-push-image-database]
+    needs: [build-and-push-image, build-and-push-image-database]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -359,7 +359,7 @@ jobs:
 
   release:
     name: "New LiteLLM Release"
-    needs: [docker-hub-deploy, build-and-push-image, build-and-push-image-database]
+    needs: [build-and-push-image, build-and-push-image-database]
 
     runs-on: "ubuntu-latest"
    
