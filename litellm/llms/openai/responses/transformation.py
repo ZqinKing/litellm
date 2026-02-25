@@ -70,10 +70,6 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
     ) -> Dict:
         """No transform applied since inputs are in OpenAI spec already"""
 
-        # Filter out 'metadata' parameter for gpt-5.2-codex
-        # Issue: CLIProxyAPI returns "Unsupported parameter: metadata" error
-        if model in ["gpt-5.2-codex", "gpt-5.3-codex"]:
-            response_api_optional_request_params.pop("metadata", None)
 
         input = self._validate_input_param(input)
         final_request_params = dict(
@@ -81,6 +77,8 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
                 model=model, input=input, **response_api_optional_request_params
             )
         )
+        if model in ["gpt-5.2-codex", "gpt-5.3-codex"]:
+            final_request_params.pop("metadata", None)
 
         return final_request_params
 
