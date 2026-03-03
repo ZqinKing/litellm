@@ -223,6 +223,16 @@
         "field_type": "password",
         "options": null,
         "default_value": null
+      },
+      {
+        "key": "api_base",
+        "label": "API Base",
+        "placeholder": null,
+        "tooltip": null,
+        "required": false,
+        "field_type": "text",
+        "options": null,
+        "default_value": null
       }
     ],
     "default_model_placeholder": "claude-3-opus"
@@ -1210,6 +1220,16 @@
         "tooltip": null,
         "required": true,
         "field_type": "password",
+        "options": null,
+        "default_value": null
+      },
+      {
+        "key": "api_base",
+        "label": "API Base",
+        "placeholder": null,
+        "tooltip": null,
+        "required": false,
+        "field_type": "text",
         "options": null,
         "default_value": null
       }
