@@ -141,3 +141,38 @@ git cherry $BASE main
 - Do not rewrite shared history.
 - Avoid force-pushing to `main` unless you own the remote branch and understand the impact.
 - After rebasing/merging, run `make lint` + `make test-unit` before opening a PR.
+
+### Fork-specific constraints (THIS FORK ONLY)
+When merging upstream stable branches, the following local commits MUST be preserved:
+
+1. **CI Workflow Optimization** (commit: `1e1e7d8bba`)
+   - Removes `docker-hub-deploy` dependency from helm and release jobs
+   - Required for: Fork仓库独立使用GitHub Actions构建Docker镜像
+   - File: `.github/workflows/ghcr_deploy.yml`
+
+2. **Provider api_base Support** (commit: `ad729c6f00`)
+   - Exposes `api_base` credential field for Anthropic and Gemini providers
+   - Required for: 支持自定义API端点配置
+   - File: `litellm/proxy/public_endpoints/provider_create_fields.json`
+
+3. **Vertex AI Role Fix** (commit: `d4973d87f3`)
+   - Adds explicit role to tool call response ContentType
+   - Required for: Vertex AI provider正确性
+   - File: `litellm/llms/vertex_ai/gemini/transformation.py`
+
+4. **OpenAI Pricing Updates** (commit: `bd4d189348`)
+   - Adds gpt-5.3-codex-spark pricing and registry updates
+   - Required for: 新模型定价支持
+   - Files: `model_prices_and_context_window.json`, `litellm/llms/openai/responses/transformation.py`
+
+5. **AGENTS.md Documentation** (commit: `472a87ae71`)
+   - Fork-specific operational playbook
+   - Required for: Agent工作流一致性
+   - File: `AGENTS.md`
+
+**Merge Checklist for Future Upstream Syncs:**
+- [ ] Verify all 5 fork-specific commits are preserved or re-applied
+- [ ] Check for duplicate keys in pricing JSON files (critical data integrity issue)
+- [ ] Validate CI workflow dependencies remain decoupled from Docker Hub
+- [ ] Confirm api_base fields present for Anthropic and Gemini
+- [ ] Run `make lint` + `make test-unit` before force-pushing to main
