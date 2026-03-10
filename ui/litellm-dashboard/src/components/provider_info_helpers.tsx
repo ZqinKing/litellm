@@ -23,6 +23,7 @@ export enum Providers {
   Hosted_Vllm = "vllm",
   Infinity = "Infinity",
   JinaAI = "Jina AI",
+  Moonshot = "Moonshot",
   MiniMax = "MiniMax",
   MistralAI = "Mistral AI",
   Ollama = "Ollama",
@@ -44,6 +45,7 @@ export enum Providers {
   xAI = "xAI",
   SAP = "SAP Generative AI Hub",
   Watsonx = "Watsonx",
+  ZAI = "Z.AI (Zhipu AI)",
 }
 
 export const provider_map: Record<string, string> = {
@@ -65,6 +67,7 @@ export const provider_map: Record<string, string> = {
   Vertex_AI: "vertex_ai",
   Databricks: "databricks",
   Dashscope: "dashscope",
+  Moonshot: "moonshot",
   xAI: "xai",
   Deepseek: "deepseek",
   Ollama: "ollama",
@@ -92,6 +95,7 @@ export const provider_map: Record<string, string> = {
   Infinity: "infinity",
   SAP: "sap",
   Watsonx: "watsonx",
+  ZAI: "zai",
 };
 
 const asset_logos_folder = "../ui/assets/logos/";
@@ -116,6 +120,7 @@ export const providerLogoMap: Record<string, string> = {
   [Providers.Hosted_Vllm]: `${asset_logos_folder}vllm.png`,
   [Providers.Infinity]: `${asset_logos_folder}infinity.png`,
   [Providers.MiniMax]: `${asset_logos_folder}minimax.svg`,
+  [Providers.Moonshot]: `${asset_logos_folder}moonshot.svg`,
   [Providers.MistralAI]: `${asset_logos_folder}mistral.svg`,
   [Providers.Ollama]: `${asset_logos_folder}ollama.svg`,
   [Providers.OpenAI]: `${asset_logos_folder}openai_small.svg`,
@@ -141,6 +146,7 @@ export const providerLogoMap: Record<string, string> = {
   [Providers.VolcEngine]: `${asset_logos_folder}volcengine.png`,
   [Providers.DeepInfra]: `${asset_logos_folder}deepinfra.png`,
   [Providers.SAP]: `${asset_logos_folder}sap.png`,
+  [Providers.ZAI]: `${asset_logos_folder}zai.svg`,
 };
 
 export const getProviderLogoAndName = (providerValue: string): { logo: string; displayName: string } => {
