@@ -1,190 +1,178 @@
-# INSTRUCTIONS FOR LITELLM
+# AGENTS.md — LiteLLM (fork)
 
-This document provides comprehensive instructions for AI agents working in the LiteLLM repository.
+This file is the **operational playbook** for agentic coding in this repository.
+It is grounded in the repo’s actual configs/scripts (Makefile, pyproject, ruff, CI workflows, UI package.json).
 
-## OVERVIEW
+## Repo map (high-signal)
+- `litellm/` Python SDK + provider adapters
+- `litellm/proxy/` Proxy server (AI Gateway)
+- `tests/` pytest suites (unit + integration buckets)
+- `ui/litellm-dashboard/` Next.js dashboard (TypeScript, Vitest, Playwright)
+- `enterprise/` enterprise extras
 
-LiteLLM is a unified interface for 100+ LLMs that:
-- Translates inputs to provider-specific completion, embedding, and image generation endpoints
-- Provides consistent OpenAI-format output across all providers
-- Includes retry/fallback logic across multiple deployments (Router)
-- Offers a proxy server (LLM Gateway) with budgets, rate limits, and authentication
-- Supports advanced features like function calling, streaming, caching, and observability
+## Build / lint / test commands
 
-## REPOSITORY STRUCTURE
+### Python (root)
+**Install**
+- `make install-dev` (dev deps via Poetry)
+- `make install-proxy-dev` (proxy dev deps)
+- CI parity installs:
+  - `make install-dev-ci`
+  - `make install-proxy-dev-ci`
 
-### Core Components
-- `litellm/` - Main library code
-  - `llms/` - Provider-specific implementations (OpenAI, Anthropic, Azure, etc.)
-  - `proxy/` - Proxy server implementation (LLM Gateway)
-  - `router_utils/` - Load balancing and fallback logic
-  - `types/` - Type definitions and schemas
-  - `integrations/` - Third-party integrations (observability, caching, etc.)
+**Format + lint (CI parity)**
+- `make format` (Black apply)
+- `make format-check` (Black check)
+- `make lint` (format-check + Ruff + MyPy + circular import + import-safety)
+- Faster local loop: `make lint-dev` (only changed formatting + MyPy + safety checks)
 
-### Key Directories
-- `tests/` - Comprehensive test suites
-- `docs/my-website/` - Documentation website
-- `ui/litellm-dashboard/` - Admin dashboard UI
-- `enterprise/` - Enterprise-specific features
+**Tests**
+- Full: `make test` (pytest `tests/`)
+- Unit (common default): `make test-unit` (pytest `tests/test_litellm -x -vv -n 4`)
 
-## DEVELOPMENT GUIDELINES
+**Run a single test** (pytest)
+```bash
+# file
+poetry run pytest tests/test_litellm/path/to/test_file.py -vv
 
-### MAKING CODE CHANGES
+# single test
+poetry run pytest tests/test_litellm/path/to/test_file.py::test_name -vv
 
-1. **Provider Implementations**: When adding/modifying LLM providers:
-   - Follow existing patterns in `litellm/llms/{provider}/`
-   - Implement proper transformation classes that inherit from `BaseConfig`
-   - Support both sync and async operations
-   - Handle streaming responses appropriately
-   - Include proper error handling with provider-specific exceptions
+# pattern
+poetry run pytest tests/test_litellm -k "pattern" -vv
+```
 
-2. **Type Safety**: 
-   - Use proper type hints throughout
-   - Update type definitions in `litellm/types/`
-   - Ensure compatibility with both Pydantic v1 and v2
+**CI matrix buckets (Makefile targets)**
+- `make test-unit-llms`
+- `make test-unit-proxy-guardrails`
+- `make test-unit-proxy-core`
+- `make test-unit-proxy-misc`
+- `make test-unit-integrations`
+- `make test-unit-core-utils`
+- `make test-unit-other`
+- `make test-unit-root`
+- `make test-proxy-unit-a` / `make test-proxy-unit-b`
 
-3. **Testing**:
-   - Add tests in appropriate `tests/` subdirectories
-   - Include both unit tests and integration tests
-   - Test provider-specific functionality thoroughly
-   - Consider adding load tests for performance-critical changes
+### UI dashboard (Next.js)
+Location: `ui/litellm-dashboard/`
 
-### MAKING CODE CHANGES FOR THE UI (IGNORE FOR BACKEND)
+```bash
+cd ui/litellm-dashboard
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run format
+npm run test
+npm run e2e
+```
 
-1. **Tremor is DEPRECATED, do not use Tremor components in new features/changes**
-   - The only exception is the Tremor Table component and its required Tremor Table sub components.
+**Run a single UI test** (Vitest)
+```bash
+cd ui/litellm-dashboard
 
-2. **Use Common Components as much as possible**:
-   - These are usually defined in the `common_components` directory
-   - Use these components as much as possible and avoid building new components unless needed
+# file
+npm run test -- src/components/foo/foo.test.tsx
 
-3. **Testing**:
-   - The codebase uses **Vitest** and **React Testing Library**
-   - **Query Priority Order**: Use query methods in this order: `getByRole`, `getByLabelText`, `getByPlaceholderText`, `getByText`, `getByTestId`
-   - **Always use `screen`** instead of destructuring from `render()` (e.g., use `screen.getByText()` not `getByText`)
-   - **Wrap user interactions in `act()`**: Always wrap `fireEvent` calls with `act()` to ensure React state updates are properly handled
-   - **Use `query` methods for absence checks**: Use `queryBy*` methods (not `getBy*`) when expecting an element to NOT be present
-   - **Test names must start with "should"**: All test names should follow the pattern `it("should ...")`
-   - **Mock external dependencies**: Check `setupTests.ts` for global mocks and mock child components/networking calls as needed
-   - **Structure tests properly**:
-     - First test should verify the component renders successfully
-     - Subsequent tests should focus on functionality and user interactions
-     - Use `waitFor` for async operations that aren't already awaited
-   - **Avoid using `querySelector`**: Prefer React Testing Library queries over direct DOM manipulation
+# by name/pattern
+npm run test -- -t "should render"
+```
 
-### IMPORTANT PATTERNS
+## Code style (enforced by config)
 
-1. **Function/Tool Calling**:
-   - LiteLLM standardizes tool calling across providers
-   - OpenAI format is the standard, with transformations for other providers
-   - See `litellm/llms/anthropic/chat/transformation.py` for complex tool handling
+### Python
+- **Formatter**: Black (run via `make format`, checked in `make lint`).
+- **Line length**: 120 (`ruff.toml`).
+- **Lint**: Ruff (`make lint-ruff`). `ruff.toml` excludes `tests/*` and some generated/types paths.
+- **Import order**: isort with `profile = "black"` (`pyproject.toml`). Prefer:
+  1) stdlib 2) third-party 3) `litellm.*` local imports.
+- **Typing**: MyPy (`make lint-mypy`) is intentionally permissive (see `litellm/mypy.ini`):
+  - `ignore_missing_imports = True`
+  - pydantic mypy plugin enabled (`pyproject.toml`).
+- **No “unprotected imports”**: `make check-import-safety` runs `from litellm import *`.
+  - If you add optional dependencies, guard imports and keep module importable.
+- **Exceptions**: follow existing patterns in `litellm/exceptions.py` (carry `llm_provider`, `model`, `response` context).
+- **Avoid**: bare `except:`, silent `except Exception: pass`, and logging secrets.
 
-2. **Streaming**:
-   - All providers should support streaming where possible
-   - Use consistent chunk formatting across providers
-   - Handle both sync and async streaming
+### UI (TypeScript/React)
+- Formatting: Prettier (`npm run format` / `format:check`).
+- Testing: Vitest + React Testing Library.
+  - Use `screen.*` queries.
+  - Prefer semantic queries: `getByRole` → `getByLabelText` → `getByPlaceholderText` → `getByText` → `getByTestId`.
+  - Tests are conventionally named `it("should ...")` (see existing `*.test.tsx`).
+- Tremor: avoid introducing new Tremor components where possible; test harness mocks some Tremor components
+  (`ui/litellm-dashboard/tests/setupTests.ts`).
 
-3. **Error Handling**:
-   - Use provider-specific exception classes
-   - Maintain consistent error formats across providers
-   - Include proper retry logic and fallback mechanisms
+## Testing conventions
+- Unit tests for Python changes go in `tests/test_litellm/` and mirror `litellm/` structure (see `CONTRIBUTING.md`).
+- Prefer mocked tests for unit coverage (avoid real provider API calls in unit tests).
+- Pytest config is in `pyproject.toml` (`asyncio_mode=auto`, retries enabled, markers like `no_parallel`).
 
-4. **Configuration**:
-   - Support both environment variables and programmatic configuration
-   - Use `BaseConfig` classes for provider configurations
-   - Allow dynamic parameter passing
+## Cursor / Copilot instructions
+- No `.cursor/rules/`, `.cursorrules`, or `.github/copilot-instructions.md` were found in this repo at scan time.
 
-## PROXY SERVER (LLM GATEWAY)
+## Git workflow for this fork (重要 / fork 合并逻辑)
+This repo is a **fork**. Local primary branch is `main`.
 
-The proxy server is a critical component that provides:
-- Authentication and authorization
-- Rate limiting and budget management
-- Load balancing across multiple models/deployments
-- Observability and logging
-- Admin dashboard UI
-- Enterprise features
+### One-time upstream setup
+```bash
+git remote add upstream https://github.com/BerriAI/litellm.git
+git fetch upstream
+```
 
-Key files:
-- `litellm/proxy/proxy_server.py` - Main server implementation
-- `litellm/proxy/auth/` - Authentication logic
-- `litellm/proxy/management_endpoints/` - Admin API endpoints
+### Merge logic (以指定上游分支为基准)
+Given a target upstream base branch (default `upstream/main`):
+1) **Use upstream as base**: `BASE=upstream/<branch>`
+2) **Check whether local-only commits already exist in BASE**
+```bash
+git fetch upstream
 
-## MCP (MODEL CONTEXT PROTOCOL) SUPPORT
+# commits that are on local main but not in BASE
+git log --oneline --cherry $BASE...main
 
-LiteLLM supports MCP for agent workflows:
-- MCP server integration for tool calling
-- Transformation between OpenAI and MCP tool formats
-- Support for external MCP servers (Zapier, Jira, Linear, etc.)
-- See `litellm/experimental_mcp_client/` and `litellm/proxy/_experimental/mcp_server/`
+# alternative view
+git cherry $BASE main
+```
+3) If there are local-only commits, integrate them onto the base:
+- Preferred (linear): `git checkout main && git rebase $BASE`
+- If you must preserve commit selection: create a feature branch from `$BASE` and `git cherry-pick <sha...>`.
 
-## RUNNING SCRIPTS
+### Safety
+- Do not rewrite shared history.
+- Avoid force-pushing to `main` unless you own the remote branch and understand the impact.
+- After rebasing/merging, run `make lint` + `make test-unit` before opening a PR.
 
-Use `poetry run python script.py` to run Python scripts in the project environment (for non-test files).
+### Fork-specific constraints (THIS FORK ONLY)
+When merging upstream stable branches, the following local commits MUST be preserved:
 
-## GITHUB TEMPLATES
+1. **CI Workflow Optimization** (commit: `1e1e7d8bba`)
+   - Removes `docker-hub-deploy` dependency from helm and release jobs
+   - Required for: Fork仓库独立使用GitHub Actions构建Docker镜像
+   - File: `.github/workflows/ghcr_deploy.yml`
 
-When opening issues or pull requests, follow these templates:
+2. **Provider api_base Support** (commit: `ad729c6f00`)
+   - Exposes `api_base` credential field for Anthropic and Gemini providers
+   - Required for: 支持自定义API端点配置
+   - File: `litellm/proxy/public_endpoints/provider_create_fields.json`
 
-### Bug Reports (`.github/ISSUE_TEMPLATE/bug_report.yml`)
-- Describe what happened vs. expected behavior
-- Include relevant log output
-- Specify LiteLLM version
-- Indicate if you're part of an ML Ops team (helps with prioritization)
+3. **Vertex AI Role Fix** (commit: `d4973d87f3`)
+   - Adds explicit role to tool call response ContentType
+   - Required for: Vertex AI provider正确性
+   - File: `litellm/llms/vertex_ai/gemini/transformation.py`
 
-### Feature Requests (`.github/ISSUE_TEMPLATE/feature_request.yml`)
-- Clearly describe the feature
-- Explain motivation and use case with concrete examples
+4. **OpenAI Pricing Updates** (commit: `bd4d189348`)
+   - Adds gpt-5.3-codex-spark pricing and registry updates
+   - Required for: 新模型定价支持
+   - Files: `model_prices_and_context_window.json`, `litellm/llms/openai/responses/transformation.py`
 
-### Pull Requests (`.github/pull_request_template.md`)
-- Add at least 1 test in `tests/litellm/`
-- Ensure `make test-unit` passes
+5. **AGENTS.md Documentation** (commit: `472a87ae71`)
+   - Fork-specific operational playbook
+   - Required for: Agent工作流一致性
+   - File: `AGENTS.md`
 
-
-## TESTING CONSIDERATIONS
-
-1. **Provider Tests**: Test against real provider APIs when possible
-2. **Proxy Tests**: Include authentication, rate limiting, and routing tests
-3. **Performance Tests**: Load testing for high-throughput scenarios
-4. **Integration Tests**: End-to-end workflows including tool calling
-
-## DOCUMENTATION
-
-- Keep documentation in sync with code changes
-- Update provider documentation when adding new providers
-- Include code examples for new features
-- Update changelog and release notes
-
-## SECURITY CONSIDERATIONS
-
-- Handle API keys securely
-- Validate all inputs, especially for proxy endpoints
-- Consider rate limiting and abuse prevention
-- Follow security best practices for authentication
-
-## ENTERPRISE FEATURES
-
-- Some features are enterprise-only
-- Check `enterprise/` directory for enterprise-specific code
-- Maintain compatibility between open-source and enterprise versions
-
-## COMMON PITFALLS TO AVOID
-
-1. **Breaking Changes**: LiteLLM has many users - avoid breaking existing APIs
-2. **Provider Specifics**: Each provider has unique quirks - handle them properly
-3. **Rate Limits**: Respect provider rate limits in tests
-4. **Memory Usage**: Be mindful of memory usage in streaming scenarios
-5. **Dependencies**: Keep dependencies minimal and well-justified
-
-## HELPFUL RESOURCES
-
-- Main documentation: https://docs.litellm.ai/
-- Provider-specific docs in `docs/my-website/docs/providers/`
-- Admin UI for testing proxy features
-
-## WHEN IN DOUBT
-
-- Follow existing patterns in the codebase
-- Check similar provider implementations
-- Ensure comprehensive test coverage
-- Update documentation appropriately
-- Consider backward compatibility impact 
+**Merge Checklist for Future Upstream Syncs:**
+- [ ] Verify all 5 fork-specific commits are preserved or re-applied
+- [ ] Check for duplicate keys in pricing JSON files (critical data integrity issue)
+- [ ] Validate CI workflow dependencies remain decoupled from Docker Hub
+- [ ] Confirm api_base fields present for Anthropic and Gemini
+- [ ] Run `make lint` + `make test-unit` before force-pushing to main
