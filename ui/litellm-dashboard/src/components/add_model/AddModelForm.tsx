@@ -165,8 +165,12 @@ const AddModelForm: React.FC<AddModelFormProps> = ({
                     placeholder={isProviderMetadataLoading ? "Loading providers..." : "Select a provider"}
                     optionFilterProp="data-label"
                     onChange={(value) => {
-                      setSelectedProvider(value as Providers);
-                      setProviderModelsFn(value as Providers);
+                      const selectedProviderInfo = sortedProviderMetadata.find((providerInfo) => providerInfo.provider === value);
+                      const selectedProviderDisplayName =
+                        (selectedProviderInfo?.provider_display_name as Providers | undefined) ?? (value as Providers);
+
+                      setSelectedProvider(selectedProviderDisplayName);
+                      setProviderModelsFn(selectedProviderDisplayName);
                       form.setFieldsValue({
                         custom_llm_provider: value,
                       });
